@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Station API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .status {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .box-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .box-header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .sensor-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .sensor-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .sensor-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .timestamp {
+            color: #999;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .auto-refresh {
+            display: inline-block;
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌤️ Weather Station Dashboard</h1>
+        <p>Live API Test Page - Backend Integration</p>
+    </div>
+
+    <div class="controls">
+        <button onclick="fetchData()">🔄 Refresh Now</button>
+        <div class="auto-refresh">
+            <label>
+                <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
+                Auto-refresh every 5 seconds
+            </label>
+        </div>
+    </div>
+
+    <div id="status" class="status">
+        <strong>Status:</strong> <span id="statusText">Click "Refresh Now" to load data</span>
+    </div>
+
+    <div id="error" style="display: none;" class="error"></div>
+
+    <div id="boxes"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        let autoRefreshInterval = null;
+
+        async function fetchData() {
+            const statusText = document.getElementById('statusText');
+            const errorDiv = document.getElementById('error');
+            const boxesDiv = document.getElementById('boxes');
+
+            try {
+                statusText.textContent = 'Loading...';
+                errorDiv.style.display = 'none';
+
+                const response = await fetch(`${API_BASE}/api/latest`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const boxCount = Object.keys(data).length;
+
+                statusText.textContent = `✅ Connected - ${boxCount} box(es) active - Last updated: ${new Date().toLocaleTimeString()}`;
+
+                // Display boxes
+                boxesDiv.innerHTML = '';
+                
+                if (boxCount === 0) {
+                    boxesDiv.innerHTML = '<div class="status">No weather boxes reporting data yet.</div>';
+                    return;
+                }
+
+                Object.entries(data).forEach(([boxId, boxData]) => {
+                    const card = document.createElement('div');
+                    card.className = 'box-card';
+                    
+                    card.innerHTML = `
+                        <div class="box-header">📦 ${boxData.box_id || boxId}</div>
+                        <div class="sensor-grid">
+                            <div class="sensor-item">
+                                <div class="sensor-label">Temperature</div>
+                                <div class="sensor-value">${boxData.temperature ?? 'N/A'}°F</div>
+                            </div>
+                            <div class="sensor-item">
+                                <div class="sensor-label">Humidity</div>
+                                <div class="sensor-value">${boxData.humidity ?? 'N/A'}%</div>
+                            </div>
+                            <div class="sensor-item">
+                                <div class="sensor-label">Pressure</div>
+                                <div class="sensor-value">${boxData.pressure ?? 'N/A'} hPa</div>
+                            </div>
+                            <div class="sensor-item">
+                                <div class="sensor-label">Wind Speed</div>
+                                <div class="sensor-value">${boxData.wind_speed ?? 'N/A'} m/s</div>
+                            </div>
+                            <div class="sensor-item">
+                                <div class="sensor-label">Wind Direction</div>
+                                <div class="sensor-value">${boxData.wind_direction ?? 'N/A'}°</div>
+                            </div>
+                            <div class="sensor-item">
+                                <div class="sensor-label">Rainfall</div>
+                                <div class="sensor-value">${boxData.rainfall ?? 'N/A'} mm</div>
+                            </div>
+                        </div>
+                        <div class="timestamp">Last reading: ${new Date(boxData.timestamp).toLocaleString()}</div>
+                    `;
+                    
+                    boxesDiv.appendChild(card);
+                });
+
+            } catch (error) {
+                statusText.textContent = '❌ Connection failed';
+                errorDiv.textContent = `Error: ${error.message}. Make sure the backend is running on ${API_BASE}`;
+                errorDiv.style.display = 'block';
+                console.error('Fetch error:', error);
+            }
+        }
+
+        function toggleAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+            
+            if (checkbox.checked) {
+                fetchData(); // Initial fetch
+                autoRefreshInterval = setInterval(fetchData, 5000);
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        }
+
+        // Auto-load on page load
+        window.addEventListener('load', fetchData);
+    </script>
+</body>
+</html>
