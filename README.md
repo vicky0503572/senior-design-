@@ -17,7 +17,7 @@ sudo systemctl start mosquitto
 
 ### Run Server
 ```bash
-python3 weather_backend_server.py
+python3 server.py
 ```
 
 ### Test
@@ -27,4 +27,5 @@ curl http://localhost:3001/api/latest
 ```
 
 ## API Documentation
+
 See `API_DOCS.md`
