@@ -13,6 +13,16 @@ CORS(app)
 # store latest readings in memory
 latest_readings = {}
 
+# Box locations 
+box_locations = {
+    # example: "box1": {"lat": 32.755, "lon": -97.330}
+}
+
+# Historical data storage [last 24 hours per box]
+historical_data = {}
+MAX_HISTORY_HOURS = 24
+MAX_HISTORY_POINTS = 288 # 5 min intervals
+
 # MQTT setup
 BROKER = "localhost" 
 PORT = 1883
@@ -30,21 +40,50 @@ def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
         box_id = msg.topic.split('/')[1] # extract box id from topic
-
-        # store with timestamp
-        latest_readings[box_id] = {
+        
+        timestamp = datetime.now().isoformat()
+        
+        # Build reading object
+        reading = {
             "box_id": box_id,
-            "temperature": payload.get("temp"),
+            "temperature": payload.get("temperature"),
             "humidity": payload.get("humidity"),
             "pressure": payload.get("pressure"),
             "wind_speed": payload.get("wind_speed"),
             "wind_direction": payload.get("wind_direction"),
             "rainfall": payload.get("rainfall"),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": timestamp,
+            "status": "online", #default status
             "raw_data": payload #for debugging
         }
+        
+        # Add location if configured
+        if box_id in box_locations:
+            reading["location"] = box_locations[box_id]
+        
+        # Store as latest reading
+        
+        latest_readings[box_id] = reading
+        
+        # Add to historical data
+        if box_id not in historical_data:
+            historical_data[box_id] = []
+        
+        historical_data[box_id].append({
+            "timestamp": timestamp,
+            "temperature": payload.get("temperature"),
+            "humidity": payload.get("humidity"),
+            "pressure": payload.get("pressure"),
+            "wind_speed": payload.get("wind_speed"),
+            "wind_direction": payload.get("wind_direction"),
+            "rainfall": payload.get("rainfall")
+        })
+        
+        # Keep only last 24 hours
+        if len(historical_data[box_id]) > MAX_HISTORY_POINTS:
+            historical_data[box_id] = historical_data[box_id][-MAX_HISTORY_POINTS:]
 
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Box {box_id}: Temp={payload.get('temp')}°F, Humidity={payload.get('humidity')}%")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Box {box_id}: Temp={payload.get('temperature')}°F, Humidity={payload.get('humidity')}%")
     except Exception as e:
         print(f"Error parsing message: {e}")
 
@@ -93,7 +132,7 @@ def mock_data(box_id):
     data = request.get_json()
     latest_readings[box_id] = {
         "box_id": box_id,
-        "temperature": data.get("temp"),
+        "temperature": data.get("temperature"),
         "humidity": data.get("humidity"),
         "pressure": data.get("pressure"),
         "wind_speed": data.get("wind_speed"),
@@ -102,8 +141,76 @@ def mock_data(box_id):
         "timestamp": datetime.now().isoformat(),
         "raw_data": data
     }
+    # Add location if configured
+    if box_id in box_locations:
+        latest_readings[box_id]["location"] = box_locations[box_id]
     return jsonify({"status": "ok", "box_id": box_id})
 
+@app.route('/api/location/<box_id>', methods=['POST'])
+def set_location(box_id):
+    """Set the physical location of a box"""
+    data = request.get_json()
+    
+    if not data.get("lat") or not data.get("lon"):
+        return jsonify({"error": "Latitude and longitude are required"}), 400
+    
+    box_locations[box_id] = {
+        "lat": data.get("lat"),
+        "lon" : data.get("lon"),
+        "name": data.get("name", f"Box {box_id}")
+    }
+    
+    # Update existing reading if exists
+    if box_id in latest_readings:
+        latest_readings[box_id]["location"] = box_locations[box_id]
+        
+    return jsonify({
+        "status": "ok",
+        "box_id": box_id,
+        "location": box_locations[box_id]
+    })
+
+@app.route('/api/location/<box_id>', methods=['GET'])
+def get_location(box_id):
+    """Get the physical location of a box"""
+    if box_id in box_locations:
+        return jsonify(box_locations[box_id])
+    return jsonify({"error": f"No location data for box '{box_id}'"}), 404
+
+@app.route('/api/locations', methods=['GET'])
+def get_all_locations():
+    """Get all configured box locations"""
+    return jsonify(box_locations)
+
+@app.route('/api/history/<box_id>', methods=['GET'])
+def get_history(box_id):
+    """Get historical data for a box"""
+    if box_id not in historical_data:
+        return jsonify({"error": f"No historical data for box '{box_id}'"}), 404
+    
+    # Optional: filter by time range
+    hours = request.args.get('hours', 24, type=int)
+    
+    # Return all or filtered history
+    return jsonify({
+        "box_id": box_id,
+        "data_points": len(historical_data[box_id]),
+        "history": historical_data[box_id]
+    })
+    
+@app.route('/api/status', methods=['GET'])
+def get_system_status():
+    """Get overall system status - for dashboard overview"""
+    total_boxes = len(latest_readings)
+    online_boxes = sum(1 for box in latest_readings.values() if box.get('status') == 'online')
+    
+    return jsonify({
+        "total_boxes": total_boxes,
+        "online_boxes": online_boxes,
+        "offline_boxes": total_boxes - online_boxes,
+        "last_update": datetime.now().isoformat()
+    })
+    
 if __name__ == '__main__':
     print("=" * 60)
     print("Weather Box Backend Starting")

@@ -91,6 +91,74 @@ Check if backend is running and see active boxes.
 
 ---
 
+### 4. Set Box Location
+**POST** `/api/location/<box_id>`
+
+Configure the physical location (lat/lon) where a weather box is installed.
+
+**Request Body:**
+```json
+{
+  "lat": 32.7555,
+  "lon": -97.3308,
+  "name": "My Backyard"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "box_id": "box1",
+  "location": {
+    "lat": 32.7555,
+    "lon": -97.3308,
+    "name": "My Backyard"
+  }
+}
+```
+
+---
+
+### 5. Get Box Location
+**GET** `/api/location/<box_id>`
+
+Get the configured location for a specific box.
+
+**Response:**
+```json
+{
+  "lat": 32.7555,
+  "lon": -97.3308,
+  "name": "My Backyard"
+}
+```
+
+---
+
+### 6. Get All Locations
+**GET** `/api/locations`
+
+Get all configured box locations (for map markers).
+
+**Response:**
+```json
+{
+  "box1": {
+    "lat": 32.7555,
+    "lon": -97.3308,
+    "name": "My Backyard"
+  },
+  "box2": {
+    "lat": 32.7600,
+    "lon": -97.3400,
+    "name": "Front Yard"
+  }
+}
+```
+
+---
+
 ## Data Field Definitions
 
 | Field | Type | Unit | Description |
@@ -103,6 +171,9 @@ Check if backend is running and see active boxes.
 | `wind_direction` | float | degrees | Wind direction (0-360°, where 0=North) |
 | `rainfall` | float | mm | Rainfall amount |
 | `timestamp` | string | ISO 8601 | When reading was taken |
+| `location` | object | - | Physical location of box (if configured) |
+| `location.lat` | float | degrees | Latitude |
+| `location.lon` | float | degrees | Longitude |
 
 ---
 
@@ -144,3 +215,78 @@ The backend has CORS enabled, so your frontend can run on a different port (like
 
 ---
 
+## 4. Get All Box Locations (for Map)
+**GET** `/api/locations`
+
+Returns all configured box locations for displaying map markers.
+
+**Response:**
+```json
+[
+  {
+    "box_id": "box1",
+    "name": "My House",
+    "latitude": 32.7555,
+    "longitude": -97.3308,
+    "has_data": true,
+    "last_update": "2026-02-11T23:08:38.993173"
+  },
+  {
+    "box_id": "box2",
+    "name": "Neighbor's House",
+    "latitude": 32.7357,
+    "longitude": -97.1081,
+    "has_data": false,
+    "last_update": null
+  }
+]
+```
+
+---
+
+## 5. Set Box Location (Admin)
+**POST** `/api/location/<box_id>`
+
+Configure the physical location of a weather box.
+
+**Request Body:**
+```json
+{
+  "lat": 32.7555,
+  "lon": -97.3308,
+  "name": "My House"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "box_id": "box1",
+  "location": {
+    "lat": 32.7555,
+    "lon": -97.3308,
+    "name": "My House"
+  }
+}
+```
+
+---
+
+## Location Field Updates
+
+Weather data now includes location:
+
+```json
+{
+  "box_id": "box1",
+  "temperature": 72.5,
+  "humidity": 45,
+  "latitude": 32.7555,
+  "longitude": -97.3308,
+  "location_name": "My House",
+  "timestamp": "..."
+}
+```
+
+**Note:** Locations are configured manually (not from GPS sensor). Users set lat/lon once when deploying a box.
