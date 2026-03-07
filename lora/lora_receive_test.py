@@ -119,7 +119,7 @@ def main():
                             try:
                                 data = json.loads(parsed['message'])
                                 print(f"      Weather Data:")
-                                print(f"      Temp: {data.get('temperature')}°F")
+                                print(f"      Temperature: {data.get('temperature')}°F")
                                 print(f"      Humidity: {data.get('humidity')}%")
                                 print(f"      Pressure: {data.get('pressure')} hPa")
                                 print(f"      Wind: {data.get('wind_speed')} m/s @ {data.get('wind_direction')}°")
