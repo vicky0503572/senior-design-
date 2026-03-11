@@ -23,11 +23,20 @@ historical_data = {}
 MAX_HISTORY_HOURS = 24
 MAX_HISTORY_POINTS = 288 # 5 min intervals
 
+
+def degrees_to_compass(degree):
+    if degree is None:
+        return None
+    directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+                  'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+    index = round(degrees / 22.5) % 16
+    return directions[index]
+
 # MQTT setup
 BROKER = "localhost" 
 PORT = 1883
 TOPIC = "weather/+/readings" 
-
+    
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print(f"Connected to MQTT broker at {BROKER}:{PORT}")
@@ -46,7 +55,8 @@ def on_message(client, userdata, msg):
         # Build reading object
         reading = {
             "box_id": box_id,
-            "temperature": payload.get("temperature"),
+            "temperature_f": payload.get("temperature_f"),
+            "temperature_c": payload.get("temperature_c"),
             "humidity": payload.get("humidity"),
             "pressure": payload.get("pressure"),
             "wind_speed": payload.get("wind_speed"),
@@ -71,12 +81,13 @@ def on_message(client, userdata, msg):
         
         historical_data[box_id].append({
             "timestamp": timestamp,
-            "temperature": payload.get("temperature"),
+            "temperature_f": payload.get("temperature_f"),
+            "temperature_c": payload.get("temperature_c"),
             "humidity": payload.get("humidity"),
             "pressure": payload.get("pressure"),
             "wind_speed": payload.get("wind_speed"),
             "wind_direction": payload.get("wind_direction"),
-            "rainfall": payload.get("rainfall")
+            "rainfall": payload.get("rainfall"),
         })
         
         # Keep only last 24 hours
@@ -132,7 +143,8 @@ def mock_data(box_id):
     data = request.get_json()
     latest_readings[box_id] = {
         "box_id": box_id,
-        "temperature": data.get("temperature"),
+        "temperature_f": data.get("temperature_f"),
+        "temperature_c": data.get("temperature_c"),
         "humidity": data.get("humidity"),
         "pressure": data.get("pressure"),
         "wind_speed": data.get("wind_speed"),

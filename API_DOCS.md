@@ -13,30 +13,27 @@ http://localhost:3001
 ### 1. Get All Weather Boxes
 **GET** `/api/latest`
 
-Returns data from all active weather boxes.
+Returns latest data from all active weather boxes.
 
 **Response:**
 ```json
 {
   "box1": {
     "box_id": "box1",
-    "temperature": 72.5,
-    "humidity": 45,
+    "temperature_f": 72.5,
+    "temperature_c": 22.5,
+    "humidity": 45.0,
     "pressure": 1013.2,
     "wind_speed": 3.2,
     "wind_direction": 180,
     "rainfall": 0.0,
-    "timestamp": "2026-02-11T20:45:32.123456"
-  },
-  "box2": {
-    "box_id": "box2",
-    "temperature": 68.3,
-    "humidity": 52,
-    "pressure": 1015.1,
-    "wind_speed": 2.1,
-    "wind_direction": 225,
-    "rainfall": 0.5,
-    "timestamp": "2026-02-11T20:45:35.987654"
+    "timestamp": "2026-02-13T14:30:00.000000",
+    "status": "online",
+    "location": {
+      "lat": 32.7555,
+      "lon": -97.3308,
+      "name": "Backyard Station"
+    }
   }
 }
 ```
@@ -50,48 +47,50 @@ Returns data from a single weather box.
 
 **Example:** `GET /api/latest/box1`
 
+### 3. Get Historical Data (24 Hours)
+**GET** `/api/history/<box_id>`
+
+Returns timestamped sensor readings for the last 24 hours.
+
 **Response:**
 ```json
 {
   "box_id": "box1",
-  "temperature": 72.5,
-  "humidity": 45,
-  "pressure": 1013.2,
-  "wind_speed": 3.2,
-  "wind_direction": 180,
-  "rainfall": 0.0,
-  "timestamp": "2026-02-11T20:45:32.123456"
+  "data_points": 144,
+  "history": [
+    {
+      "timestamp": "2026-02-13T14:30:00.000000",
+      "temperature_f": 72.5,
+      "temperature_c": 22.5,
+      "humidity": 45.0,
+      "pressure": 1013.2,
+      "wind_speed": 3.2,
+      "wind_direction": 180,
+      "rainfall": 0.0
+    }
+  ]
 }
 ```
-
-**Error Response (box not found):**
-```json
-{
-  "error": "No data for this box"
-}
-```
-Status Code: `404`
 
 ---
 
-### 3. Health Check
-**GET** `/`
+### 4. Get System Status
+**GET** `/api/status`
 
-Check if backend is running and see active boxes.
+Returns overall system health.
 
 **Response:**
 ```json
 {
-  "status": "running",
-  "mqtt_broker": "localhost:1883",
-  "active_boxes": ["box1", "box2"],
-  "total_readings": 2
+  "total_boxes": 5,
+  "online_boxes": 5,
+  "last_update": "2026-02-13T14:30:00.000000"
 }
 ```
 
 ---
 
-### 4. Set Box Location
+### 5. Set Box Location
 **POST** `/api/location/<box_id>`
 
 Configure the physical location (lat/lon) where a weather box is installed.
@@ -159,34 +158,52 @@ Get all configured box locations (for map markers).
 
 ---
 
-## Data Field Definitions
+## Data Field Reference
 
 | Field | Type | Unit | Description |
 |-------|------|------|-------------|
-| `box_id` | string | - | Unique identifier for weather box |
-| `temperature` | float | °F | Temperature reading |
-| `humidity` | float | % | Relative humidity percentage |
-| `pressure` | float | hPa | Atmospheric pressure |
+| `box_id` | string | - | Unique box identifier |
+| `temperature_f` | float | °F | Temperature in Fahrenheit |
+| `temperature_c` | float | °C | Temperature in Celsius |
+| `humidity` | float | % | Relative humidity |
+| `pressure` | float | hPa | Atmospheric pressure (hectopascals) |
 | `wind_speed` | float | m/s | Wind speed |
-| `wind_direction` | float | degrees | Wind direction (0-360°, where 0=North) |
+| `wind_direction` | integer | degrees | Wind direction (0-360°, 0=North) |
 | `rainfall` | float | mm | Rainfall amount |
 | `timestamp` | string | ISO 8601 | When reading was taken |
-| `location` | object | - | Physical location of box (if configured) |
-| `location.lat` | float | degrees | Latitude |
-| `location.lon` | float | degrees | Longitude |
+| `status` | string | - | Box status (always "online") |
 
 ---
+## Unit Conversions Reference
+
+### **Temperature:**
+- **Frontend displays:** Both F and C (user preference or toggle)
+- **Conversion:** Already done by backend - no frontend math needed!
+
+### **Pressure:**
+- **hPa (hectopascals)** = standard weather unit
+- 1013.25 hPa = normal sea level pressure
+- Range: 300-1250 hPa (covers CDR requirement of 30-125 kPa)
+- **If you need kPa:** Divide by 10 (e.g., 1013.2 hPa = 101.32 kPa)
+- **If you need Pa:** Multiply by 100 (e.g., 1013.2 hPa = 101320 Pa)
 
 ## Auto-Refresh Strategy
 
 **Option: Polling**
 ```javascript
-// Fetch new data every 5 seconds
-setInterval(() => {
-  fetch('http://localhost:3001/api/latest')
-    .then(res => res.json())
-    .then(data => updateDashboard(data));
-}, 5000);
+// Poll for updates every 5 seconds
+useEffect(() => {
+  const fetchData = async () => {
+    const response = await fetch('http://localhost:3001/api/latest');
+    const data = await response.json();
+    setWeatherData(data);
+  };
+
+  fetchData(); // Initial fetch
+  const interval = setInterval(fetchData, 5000);
+
+  return () => clearInterval(interval);
+}, []);
 ```
 
 ---
@@ -214,79 +231,5 @@ Just visit: `http://localhost:3001/api/latest`
 The backend has CORS enabled, so your frontend can run on a different port (like `localhost:8080`) and still call the API.
 
 ---
-
-## 4. Get All Box Locations (for Map)
-**GET** `/api/locations`
-
-Returns all configured box locations for displaying map markers.
-
-**Response:**
-```json
-[
-  {
-    "box_id": "box1",
-    "name": "My House",
-    "latitude": 32.7555,
-    "longitude": -97.3308,
-    "has_data": true,
-    "last_update": "2026-02-11T23:08:38.993173"
-  },
-  {
-    "box_id": "box2",
-    "name": "Neighbor's House",
-    "latitude": 32.7357,
-    "longitude": -97.1081,
-    "has_data": false,
-    "last_update": null
-  }
-]
-```
-
----
-
-## 5. Set Box Location (Admin)
-**POST** `/api/location/<box_id>`
-
-Configure the physical location of a weather box.
-
-**Request Body:**
-```json
-{
-  "lat": 32.7555,
-  "lon": -97.3308,
-  "name": "My House"
-}
-```
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "box_id": "box1",
-  "location": {
-    "lat": 32.7555,
-    "lon": -97.3308,
-    "name": "My House"
-  }
-}
-```
-
----
-
-## Location Field Updates
-
-Weather data now includes location:
-
-```json
-{
-  "box_id": "box1",
-  "temperature": 72.5,
-  "humidity": 45,
-  "latitude": 32.7555,
-  "longitude": -97.3308,
-  "location_name": "My House",
-  "timestamp": "..."
-}
-```
 
 **Note:** Locations are configured manually (not from GPS sensor). Users set lat/lon once when deploying a box.
