@@ -1,47 +1,126 @@
+html,
+body,
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+body {
+  background: #07111f;
+  color: white;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.appShell {
+  min-height: 100vh;
+  width: 100%;
+  padding: 24px;
 }
 
-.card {
-  padding: 2em;
+/* HEADER */
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
-.read-the-docs {
-  color: #888;
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-/* --- Active Nodes UI --- */
+.pageTitle {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.pageMeta {
+  margin: 0;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.refreshBtn {
+  margin-top: 8px;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.refreshBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.errorText {
+  color: #ff6b6b;
+  margin: 0 0 16px;
+}
+
+/* SUMMARY */
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0 28px;
+}
+
+.summaryCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px 20px;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.summaryLabel {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 10px;
+}
+
+.summaryValue {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  color: white;
+}
+
+.summaryTime {
+  font-size: 24px;
+}
+
+.onlineText {
+  color: #33d17a;
+}
+
+.offlineText {
+  color: #ff4d4f;
+}
+
+
+
+/* ACTIVE NODES */
+
 .activeNodesTitle {
   margin: 28px 0 12px;
   font-size: 22px;
@@ -50,34 +129,60 @@
 
 .nodesGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+.nodesGrid > div {
+  cursor: pointer;
+}
+
+.nodesGrid > div:hover .nodeCard {
+  transform: translateY(-2px);
+  transition: transform 0.18s ease;
 }
 
 .nodeCard {
   background: rgba(255, 255, 255, 0.03);
-  border: 2px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 18px;
+  min-height: 260px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+}
+
+.nodeCard.online {
+  border-color: rgba(51, 209, 122, 0.45);
+}
+
+.nodeCard.warning {
+  border-color: rgba(245, 194, 17, 0.45);
+}
+
+.nodeCard.offline {
+  border-color: rgba(255, 77, 79, 0.45);
 }
 
 .nodeHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+  gap: 10px;
 }
 
 .nodeTitle {
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .statusPill {
   font-size: 13px;
+  font-weight: 700;
   padding: 6px 12px;
   border-radius: 999px;
-  border: 2px solid;
+  border: 1.5px solid;
   text-transform: lowercase;
 }
 
@@ -96,61 +201,235 @@
   border-color: #ff4d4f;
 }
 
-.nodeCard.online { border-color: rgba(51, 209, 122, 0.5); }
-.nodeCard.warning { border-color: rgba(245, 194, 17, 0.5); }
-.nodeCard.offline { border-color: rgba(255, 77, 79, 0.5); }
-
 .rows {
   display: grid;
-  gap: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .row {
   display: flex;
   justify-content: space-between;
-  color: rgba(255,255,255,0.9);
+  align-items: center;
+  gap: 12px;
 }
 
 .label {
-  opacity: 0.75;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
 }
 
 .value {
   font-weight: 700;
+  font-size: 16px;
+  color: white;
 }
 
-@media (max-width: 980px) {
-  .nodesGrid { grid-template-columns: 1fr; }
-}
+/* OPTIONAL LATER */
 
-/* NETWORK OVERVIEW PANEL */
-
-.overviewPanel{
-  margin-top: 30px;
+.overviewPanel {
+  margin-top: 8px;
   margin-bottom: 30px;
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.overviewHeader{
+.overviewHeader {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 16px 20px;
   font-weight: 700;
   font-size: 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.mapPlaceholder{
-  height: 320px;
+.mapWrap {
+  height: 360px;
+}
+
+.leafletMap {
+  height: 100%;
+  width: 100%;
+}
+
+.leaflet-container {
+  background: #0b1220;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1200px) {
+  .nodesGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .topBar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .nodesGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pageTitle {
+    font-size: 36px;
+  }
+
+  .pageMeta {
+    font-size: 16px;
+  }
+}
+
+
+.detailPage {
+  min-height: 100vh;
+  padding: 24px;
+  background: #07111f;
+  color: white;
+}
+
+.detailTopBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  gap: 16px;
+}
+
+.backBtn {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.backBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.detailLastSeen {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+}
+
+.detailHeader {
+  margin-bottom: 28px;
+}
+
+.detailTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 800;
+}
+
+.detailSection {
+  margin-bottom: 28px;
+}
+
+.detailSectionTitle {
+  margin: 0 0 14px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.sensorGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.sensorCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 24px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.sensorLabel {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.sensorValue {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.detailInfoCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 20px;
+}
+
+.detailInfoRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.detailInfoRow:last-child {
+  border-bottom: none;
+}
+
+.historyPlaceholder {
+  min-height: 240px;
+  border-radius: 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.5;
-  font-size: 18px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+@media (max-width: 1100px) {
+  .sensorGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .detailTopBar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .detailTitle {
+    font-size: 32px;
+  }
+
+  .sensorGrid {
+    grid-template-columns: 1fr;
+  }
 }

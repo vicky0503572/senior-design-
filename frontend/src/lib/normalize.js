@@ -8,7 +8,6 @@ export function windDirText(deg) {
   return dirs[index];
 }
 
-
 // Determine if a node is online/offline based on last timestamp
 export function computeStatus(node) {
   if (!node.timestamp) return "offline";
@@ -22,25 +21,33 @@ export function computeStatus(node) {
   return "offline";
 }
 
-
 // Format node data for the UI
 export function decorateNode(node) {
   return {
     ...node,
 
-    status: computeStatus(node),
+    // identity
+    box_id: node.box_id ?? "unknown",
 
-    wind_dir_text: windDirText(node.wind_direction),
-
-    // safe fallbacks if backend fields missing
-    temperature: node.temperature ?? null,
+    // sensor values from backend API
+    temperature_f: node.temperature_f ?? null,
+    temperature_c: node.temperature_c ?? null,
     humidity: node.humidity ?? null,
     pressure: node.pressure ?? null,
     wind_speed: node.wind_speed ?? null,
+    wind_direction: node.wind_direction ?? null,
     rainfall: node.rainfall ?? null,
 
-    latitude: node.latitude ?? null,
-    longitude: node.longitude ?? null,
-    location_name: node.location_name ?? null,
+    // derived display helpers
+    status: node.status ?? computeStatus(node),
+    wind_dir_text: windDirText(node.wind_direction),
+
+    // location from backend API shape
+    latitude: node.location?.lat ?? null,
+    longitude: node.location?.lon ?? null,
+    location_name: node.location?.name ?? null,
+
+    // keep timestamp safe
+    timestamp: node.timestamp ?? null,
   };
 }
