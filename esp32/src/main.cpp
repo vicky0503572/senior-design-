@@ -16,9 +16,20 @@ const int LORA_DESTINATION = 2;   // gateway
 Adafruit_BMP085 bmp;     
 Adafruit_SHT31 sht3x = Adafruit_SHT31();
 
+// wind vane
+constexpr int WIND_VANE_PIN = 13;
+constexpr int ADC_RESOLUTION = 4095;
+constexpr uint8_t SHT3X_ADDR = 0x44;
+
 // helper: celcius -> farenheit
 float cToF(float c) {
   return (c * 9.0 / 5.0) + 32.0;
+}
+
+// wind vane voltage to direction (0-360 degrees)
+inline float windVaneVoltToDirection(int rawWindVaneVoltage) {
+  return (static_cast<float>(rawWindVaneVoltage) /
+          static_cast<float>(ADC_RESOLUTION)) * 360.0;
 }
 
 void sendATCommand(const String &cmd, int waitMs = 500) {
@@ -82,6 +93,10 @@ void setup() {
 }
 
 void loop() {
+  // read wind vane
+  int windVaneRaw = analogRead(WIND_VANE_PIN);
+  float windDirection = windVaneVoltToDirection(windVaneRaw);
+
   // Read BMP180
   float bmpTempC = bmp.readTemperature();
   float bmpTempF = cToF(bmpTempC);
@@ -108,6 +123,7 @@ void loop() {
   Serial.printf("SHT30 Temperature: %.1f°F (%.1f°C)\n", shtTempF, shtTempC);
   Serial.printf("SHT30 Humidity: %.1f%%\n", shtHumidity);
   Serial.printf("Pressure: %.1f hPa (%.0f Pa)\n", pressurehPa, pressurePa);
+  Serial.printf("Wind Direction: %.1f° (raw: %d)\n", windDirection, windVaneRaw);
   Serial.printf("BMP Temp: %.1f°F (for reference)\n", bmpTempF);
 
   // Build JSON payload
@@ -117,7 +133,7 @@ void loop() {
   doc["humidity"] = round(shtHumidity * 10) / 10.0;
   doc["pressure"] = round(pressurehPa * 10) / 10.0;       // hPa
   doc["wind_speed"] = 0.0;      // TODO: waiting for wind sensor and rain sensor
-  doc["wind_direction"] = 0;
+  doc["wind_direction"] = round(windDirection);
   doc["rainfall"] = 0.0;
 
   String jsonString;
