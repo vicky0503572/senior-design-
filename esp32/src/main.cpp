@@ -92,6 +92,8 @@ void setup() {
   setupLoRa();
 }
 
+static uint32_t packetSequence = 0;
+
 void loop() {
   // read wind vane
   int windVaneRaw = analogRead(WIND_VANE_PIN);
@@ -128,6 +130,7 @@ void loop() {
 
   // Build JSON payload
   StaticJsonDocument<256> doc;
+  doc["sequence"] = packetSequence;
   doc["temperature_f"] = round(shtTempF * 10) / 10.0;   // Fahrenheit
   doc["temperature_c"] = round(shtTempC * 10) / 10.0;   // Celcius
   doc["humidity"] = round(shtHumidity * 10) / 10.0;
@@ -141,6 +144,8 @@ void loop() {
 
   // Send over LoRa
   sendLoRaMessage(jsonString);
+
+  packetSequence++;
 
   Serial.println("----------------------------\n");
   delay(5000); // every 5 seconds
