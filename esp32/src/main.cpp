@@ -3,6 +3,7 @@
 #include <Adafruit_BMP085.h>
 #include <Adafruit_SHT31.h>
 #include "HardwareSerial.h"
+#include "DFRobot_RainfallSensor.h"
 
 // LoRa UART
 #define LORA_RX 16
@@ -15,11 +16,15 @@ const int LORA_DESTINATION = 2;   // gateway
 
 Adafruit_BMP085 bmp;     
 Adafruit_SHT31 sht3x = Adafruit_SHT31();
+DFRobot_RainfallSensor_I2C Sensor(&Wire);
 
 // wind vane
 constexpr int WIND_VANE_PIN = 13;
 constexpr int ADC_RESOLUTION = 4095;
 constexpr uint8_t SHT3X_ADDR = 0x44;
+
+// wind speed
+
 
 // helper: celcius -> farenheit
 float cToF(float c) {
@@ -88,6 +93,9 @@ void setup() {
     Serial.println("Could not find SHT30");
     while (1) { delay(10); }
   }
+  
+  // set the rain accumulated value, unit: mm
+  Sensor.setRainAccumulatedValue(0.2794);
 
   setupLoRa();
 }
@@ -116,6 +124,13 @@ void loop() {
     return;
   }
 
+  // read wind speed
+  int sensorValue = analogRead(32);
+  float outvoltage = sensorValue * (5.0 / 1023.0);
+  float wind_speed = 6 * outvoltage; // The level of wind speed is proportional to the outputvoltage
+  
+  float rainfall = Sensor.getRainfall();
+  
   float shtTempF = cToF(shtTempC);
 
   float temperatureF = shtTempF;
@@ -125,6 +140,7 @@ void loop() {
   Serial.printf("SHT30 Temperature: %.1f°F (%.1f°C)\n", shtTempF, shtTempC);
   Serial.printf("SHT30 Humidity: %.1f%%\n", shtHumidity);
   Serial.printf("Pressure: %.1f hPa (%.0f Pa)\n", pressurehPa, pressurePa);
+  Serial.printf("Wind Speed: %.1f m/s\n", wind_speed)
   Serial.printf("Wind Direction: %.1f° (raw: %d)\n", windDirection, windVaneRaw);
   Serial.printf("BMP Temp: %.1f°F (for reference)\n", bmpTempF);
 
@@ -135,9 +151,9 @@ void loop() {
   doc["temperature_c"] = round(shtTempC * 10) / 10.0;   // Celcius
   doc["humidity"] = round(shtHumidity * 10) / 10.0;
   doc["pressure"] = round(pressurehPa * 10) / 10.0;       // hPa
-  doc["wind_speed"] = 0.0;      // TODO: waiting for wind sensor and rain sensor
+  doc["wind_speed"] = round(wind_speed * 10) / 10.0;      // TODO: waiting for wind sensor and rain sensor
   doc["wind_direction"] = round(windDirection);
-  doc["rainfall"] = 0.0;
+  doc["rainfall"] = round(rainfall * 100) / 100.0;
 
   String jsonString;
   serializeJson(doc, jsonString);
