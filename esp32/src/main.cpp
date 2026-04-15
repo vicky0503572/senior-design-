@@ -140,7 +140,7 @@ void loop() {
   Serial.printf("SHT30 Temperature: %.1f°F (%.1f°C)\n", shtTempF, shtTempC);
   Serial.printf("SHT30 Humidity: %.1f%%\n", shtHumidity);
   Serial.printf("Pressure: %.1f hPa (%.0f Pa)\n", pressurehPa, pressurePa);
-  Serial.printf("Wind Speed: %.1f m/s\n", wind_speed)
+  Serial.printf("Wind Speed: %.1f m/s\n", wind_speed);
   Serial.printf("Wind Direction: %.1f° (raw: %d)\n", windDirection, windVaneRaw);
   Serial.printf("BMP Temp: %.1f°F (for reference)\n", bmpTempF);
 
