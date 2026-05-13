@@ -4,6 +4,8 @@ import paho.mqtt.client as mqtt
 import json
 import threading 
 from datetime import datetime
+from collections import deque
+import time
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -23,6 +25,13 @@ historical_data = {}
 MAX_HISTORY_HOURS = 24
 MAX_HISTORY_POINTS = 288 # 5 min intervals
 
+# Packet Loss tracking
+packet_stats = {
+}
+
+# network resilience
+message_queue = deque(maxlen=1000)
+mqtt_connected = False
 
 def degrees_to_compass(degree):
     if degree is None:
@@ -36,23 +45,73 @@ def degrees_to_compass(degree):
 BROKER = "localhost" 
 PORT = 1883
 TOPIC = "weather/+/readings" 
-    
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print(f"Connected to MQTT broker at {BROKER}:{PORT}")
-        client.subscribe(TOPIC)
-        print(f"Subscribed to: {TOPIC}")
-    else:
-        print(f"Connection failed with code {rc}")
 
-def on_message(client, userdata, msg):
+def calculate_packet_loss(box_id):
+    if box_id not in packet_stats:
+        return 0.0
+    
+    stats = packet_stats[box_id]
+    total_expected = stats.get("total_expected", 0)
+    total_received = stats.get("total_received", 0)
+    
+    if total_expected == 0:
+        return 0.0
+    
+    lost = total_expected - total_received
+    loss_percentage = (lost / total_expected) * 100
+    return round(loss_percentage, 2)
+
+def process_queued_messages():
+    global mqt_connected
+    
+    if not mqtt_connected or len(message_queue) == 0:
+        return
+    
+    print(f"\n Processing {len(message_queue)} queued message")
+    
+    while len(message_queue) > 0:
+        try:
+            queued_msg = message_queue.popleft()
+            process_message(queued_msg["topic"], queued_msg["payload"])
+            print(f" Processed queued message from {queued_msg['box_id']}")
+        except Exception as e:
+            print(f"Error processing queued message: {e}")
+
+    print(f"Queue cleared:\n")
+
+def process_message(topic, payload_str):
     try:
-        payload = json.loads(msg.payload.decode())
-        box_id = msg.topic.split('/')[1] # extract box id from topic
+        payload = json.loads(payload_str)
+        box_id = topic.split('/')[1]
         
-        timestamp = datetime.now().isoformat()
+        timstamp = datetime.now().isoformat()
         
-        # Build reading object
+        # packet loss tracking
+        if "sequence" in payload:
+            seq = payload["sequence"]
+            
+            if box_id not in packet_stats:
+                packet_stats[box_id] = {
+                    "total_expected": 0,
+                    "total_received": 0,
+                    "last_sequence": seq - 1
+                } 
+                
+            stats = packet_stats[box_id]
+            expected_seq = stats["last_sequence"] + 1
+            
+            # calculate expected packets
+            if seq > expected_seq:
+                # packet were lost
+                lost_packets = seq - expected_seq
+                stats["total_expected"] += lost_packets
+                print(f"Box {box_id}: Lost {lost_packet} packet(s) (expected seq {expected_seq}, got {seq})")
+                
+            stats["total_expected"] += 1
+            stats["total_received"] += 1
+            stats["last_sequence'"] = seq
+            
+        # build reading object
         reading = {
             "box_id": box_id,
             "temperature_f": payload.get("temperature_f"),
@@ -63,8 +122,9 @@ def on_message(client, userdata, msg):
             "wind_direction": payload.get("wind_direction"),
             "rainfall": payload.get("rainfall"),
             "timestamp": timestamp,
-            "status": "online", #default status
-            "raw_data": payload #for debugging
+            "status": "online",
+            "packet_loss": calculate_packet_loss(box_id),
+            "raw_data": payload
         }
         
         # Add location if configured
@@ -72,7 +132,6 @@ def on_message(client, userdata, msg):
             reading["location"] = box_locations[box_id]
         
         # Store as latest reading
-        
         latest_readings[box_id] = reading
         
         # Add to historical data
@@ -87,29 +146,76 @@ def on_message(client, userdata, msg):
             "pressure": payload.get("pressure"),
             "wind_speed": payload.get("wind_speed"),
             "wind_direction": payload.get("wind_direction"),
-            "rainfall": payload.get("rainfall"),
+            "rainfall": payload.get("rainfall")
         })
         
         # Keep only last 24 hours
         if len(historical_data[box_id]) > MAX_HISTORY_POINTS:
             historical_data[box_id] = historical_data[box_id][-MAX_HISTORY_POINTS:]
-
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Box {box_id}: Temp={payload.get('temperature')}°F, Humidity={payload.get('humidity')}%")
+            
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Box {box_id}: {payload.get('temperature_f')}°F, Loss: {calculate_packet_loss(box_id)}%")
     except Exception as e:
-        print(f"Error parsing message: {e}")
+        print(f"Error procesing message: {e}")
+        
+def on_connect(client, userdata, flags, rc):
+    global mqtt_connected
+    
+    if rc == 0:
+        mqtt_connected = True
+        print(f"Connected to MQTT broker at {BROKER}:{PORT}")
+        client.subscribe(TOPIC)
+        print(f"Subscribed to: {TOPIC}")
+        
+        process_queued_messages()
+    else:
+        mqtt_connected = False
+        print(f"Connection failed with code {rc}")
 
+def on_disconnect(client, userdata, rc):
+    global mqtt_connected
+    mqtt_connected = False
+    
+    if rc != 0:
+        print(f"Unexpected MQTT disconnect (code {rc})")
+        print(f"Queuing messages until reconnection")
+        
+def on_message(client, userdata, msg):
+    try:
+        box_id = msg.topic.split('/')[1]
+        payload_str = msg.payload.decode()
+        
+        # Process immediately if connected
+        if mqtt_connected:
+            process_message(msg.topic, payload_str)
+        else:
+            # Queue for later if disconnected
+            message_queue.append({
+                "topic": msg.topic,
+                "payload": payload_str,
+                "box_id": box_id,
+                "queued_at": datetime.now().isoformat()
+            })
+            print(f"📦 Queued message from {box_id} (queue size: {len(message_queue)})")
+            
+    except Exception as e:
+        print(f"Error in on_message: {e}")
+        
 # start mqtt in background thread
 def start_mqtt():
     client = mqtt.Client()
     client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
     client.on_message = on_message
+    
+    # enable auto_reconnect
+    client.reconnect_delay_set(min_delay=1, max_delay=120)
 
     try:
         client.connect(BROKER, PORT, 60)
         client.loop_forever()
     except Exception as e:
         print(f"MQTT connection error: {e}")
-        print("Make sure Mosquitto is running: sudo service mosquitto start")
+        print(f"Entering queue mode...")
 
 mqtt_thread = threading.Thread(target=start_mqtt, daemon=True)
 mqtt_thread.start()
@@ -121,6 +227,8 @@ def health():
     return jsonify({
         "status": "running",
         "mqtt_broker": f"{BROKER}:{PORT}",
+        "mqtt_connected": mqtt_connected,
+        "queued_messages": len(message_queue),
         "active_boxes": list(latest_readings.keys()),
         "total_readings": len(latest_readings)
     })
@@ -136,6 +244,42 @@ def get_latest_by_id(box_id):
     if box_id in latest_readings:
         return jsonify(latest_readings[box_id])
     return jsonify({"error": f"No data for box '{box_id}'"}), 404
+
+@app.route('/api/stats/<box_id>', methods=['GET'])
+def get_packet_stats(box_id):
+    if box_id not in packet_stats:
+        return jsonify({"error": "No statistics available for this box"}), 404
+    
+    stats = packet_stats[box_id]
+    loss_pct = calculate_packet_loss(box_id)
+    
+    return jsonify({
+        "box_id": box_id,
+        "total_expected": stats["total_expected"],
+        "total_received": stats["total_received"],
+        "packets_lost": stats["total_expected"] - stats["total_received"],
+        "packet_loss_percentage": loss_pct,
+        "last_sequence": stats["last_sequence"],
+        "status": "PASS" if loss_pct < 5.0 else "FAIL"
+    })
+
+@app.route('/api/stats', methods=['GET'])
+def get_all_stats():
+    all_stats = {}
+    
+    for box_id in packet_stats:
+        stats = packet_stats[box_id]
+        loss_pct = calculate_packet_loss(box_id)
+        
+        all_stats[box_id] = {
+            "total_expected": stats["total_expected"],
+            "total_received": stats["total_received"],
+            "packet_lost": stats["total_expected"] - stats["total_received"],
+            "packet_loss_percentage": loss_pct,
+            "status": "PASS" if loss_pct < 5.0 else "FAIL"
+        }
+    
+    return jsonify(all_stats)
 
 @app.route('/api/mock/<box_id>', methods=['POST'])
 def mock_data(box_id):
