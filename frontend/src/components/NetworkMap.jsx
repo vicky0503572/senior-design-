@@ -47,7 +47,7 @@ export default function NetworkMap({ nodes }) {
             >
               <Popup>
                 <div>
-                  <strong>Box #{node.box_id}</strong>
+                  <strong>Box {node.box_id}</strong>
                   <br />
                   Status: {node.status}
                   <br />

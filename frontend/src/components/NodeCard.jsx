@@ -2,7 +2,7 @@ export default function NodeCard({ node }) {
   return (
     <div className={`nodeCard ${node.status}`}>
       <div className="nodeHeader">
-        <div className="nodeTitle">Box #{node.box_id}</div>
+        <div className="nodeTitle">Box {node.box_id}</div>
         <div className={`statusPill ${node.status}`}>{node.status}</div>
       </div>
 
@@ -19,9 +19,7 @@ export default function NodeCard({ node }) {
 
         <div className="row">
           <span className="label">Wind</span>
-          <span className="value">
-            {node.wind_speed ?? "--"} m/s {node.wind_dir_text ?? "—"}
-          </span>
+          <span className="value">{node.wind_speed ?? "--"} m/s · {node.wind_dir_text ?? "—"}</span>
         </div>
 
         <div className="row">
