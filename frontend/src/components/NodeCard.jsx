@@ -2,7 +2,7 @@ export default function NodeCard({ node }) {
   return (
     <div className={`nodeCard ${node.status}`}>
       <div className="nodeHeader">
-        <div className="nodeTitle">Box {node.box_id}</div>
+        <div className="nodeTitle">{node.box_id}</div>
         <div className={`statusPill ${node.status}`}>{node.status}</div>
       </div>
 

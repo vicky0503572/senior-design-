@@ -52,13 +52,11 @@ export default function App() {
         <div className="titleBlock">
           <h1 className="pageTitle">MicroWeather Network</h1>
           <p className="pageMeta">
-            API: {API_BASE}
-            {lastUpdate && <span> • Last update: {lastUpdateText}</span>}
           </p>
         </div>
 
         <button className="refreshBtn" onClick={load}>
-          Refresh now
+          ↻
         </button>
       </header>
 
